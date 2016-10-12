@@ -20,7 +20,7 @@ Challenge by Justin Paglierani
 Writeup
 ------
 
-First, we download the file given to us in the link. It's a `.tar.gz `, so we can decompresss it with `tar -xvzf hsfchall.tar.gz`. In the archive, we find a file called `HSF Challenge.vdi`. This is a Virtual Disk Image, so we want to mount it to look through the files - but we want to make sure we don't accidentally write to the disk image and potentially damage the evidence. This is obviously important to make sure we don't accidentally delete incriminating information. In real criminal cyber forensics, though, we have to do this to make sure that the accused party can't just claim that we've tampered with the evidence to get incriminating information.
+First, we download the file given to us in the link. It's a `.tar.gz `, so we can decompresss it with `tar -xvzf hsfchall.tar.gz`. In the archive, we find a file called `HSF Challenge.vdi`. This is a Virtual Disk Image, so we want to mount it to look through the files.
 
 There are a few good ways to do this. First, one could use Kali Linux's forensics mode, which can be accessed using the Kali live CD. If you choose this method, you can use VirtualBox or whatever VM-running software you use and attach the VDI file we have to a machine that has the Kali live CD on it:
 
