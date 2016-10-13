@@ -22,31 +22,31 @@ Note: To solve this problem, I used `gdb-peda`. You might want to download it fr
 
 One of the first things I always do when reversing, even before running the program itself, is running `strings` on it. This prints out strings of printable characters, and can often help in reversing a problem - or even get you the flag, if you're lucky:
 
-![strings](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/strings.png)
+![strings](strings.png)
 
 Well, we don't find any flags, but we do find an interesting string referring to Curve25519: `Curve25519 key exchange failed !` This caught my attention, especially the space between the `failed` and the `!`, so I decided to google this exact string.
 
-![curve25519](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/curve25519.png)
+![curve25519](curve25519.png)
 
 Looks like this program has been packed with [midgetpack](https://github.com/arisada/midgetpack)! Well, that doesn't help us much right now, so let's try another means of attack.
 
 This time, let's try running the binary. Upon opening it, we are faced with a screen like this:
 
-![welcome screen](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/welcome.png)
+![welcome screen](welcome.png)
 
 (By the way, for those curious, the YouTube link isn't relevant to the problem - it's just a 10 hour [video](https://youtube.com/watch?v=z9Uz1icjwrM) called "Taking the Hobbits to Isengard.")
 
 After putting in the password (`youshallnotpass`), the program seems to hang. But let's try putting in some text:
 
-![text](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/spamtext.png)
+![text](spamtext.png)
 
 Looks like its taking input, and after it's taken a certain amount of characters it'll print `woaw`. We plug it into `gdb` to maybe see what's going on (`gdb ./isengard`).
 
-![ripfam](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/ripfam.png)
+![ripfam](ripfam.png)
 
 It seems like the program knows it's being run in gdb, and prints out `rip fam` to console us with our failure. Let's try running `strace` on it to maybe get a better idea of what it's doing.
 
-![strace](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/straceptrace.png)
+![strace](straceptrace.png)
 
 The highlighted line shows that the program is calling `ptrace`. After googling around, I found [this site](http://manoharvanga.com/hackme/) that poses a similar problem. `ptrace` is often used in programs to tell if it is being run within a debugger (like `gdb`), since it returns -1 if the environment it is running in is already ptraced. The site also presents a remedy: make a fake `ptrace` function, and load it into the binary via `LD_PRELOAD`. I used this fake ptrace function (saved as `fake.c`):
 
@@ -77,11 +77,11 @@ write(1, "B-)\n", 4B-)
 
 When we reach the point where the program used to say `rip fam`, instead it shows `B-)` (courtesy of our fake ptrace function), and it asks for our input. After inputting our string, we get:
 
-![2atatime](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/twoatatime.png)
+![2atatime](twoatatime.png)
 
 Looks like it reads our input 2 characters at a time. This will be important later. Running it in GDB, we get similar results:
 
-![B-)](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/ldpreloaded.png)
+![B-)](ldpreloaded.png)
 
 So that we don't have to type it in every time we run gdb, we can do this in bash:
 `echo set environment LD_PRELOAD=./fake.so >> ~/.gdbinit`
@@ -91,7 +91,7 @@ This will make it so that the LD_PRELOAD environment variable will be set automa
 
 We want to find out some information about the real program, not that packer standing in our way, or any syscalls like `read()`.  So, we run the program in gdb, type in the password, and when it asks for input we hit `Ctrl+C` to break. We then hit n, input 2 characters, and keep hitting n until we reach an address that isn't in the `0xf7xxxxxx` range:
 
-![realbinary](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/realbinary.png)
+![realbinary](realbinary.png)
 
 Ok, so it looks like we're in the right place. I wasn't too familiar with how packers worked, but I figured that they had to load most of the program unpacked into memory somewhere, so I tried dumping as much of the memory in this range as possible. After being guided with some error messages about memory being unreadable, I ended up dumping memory with this command:
 
@@ -147,9 +147,9 @@ After continuing for a bit and jumping to `0x8048722`, it looks like the program
 
 Let's take a look at what's stored in each of those, with `x/h` (examine memory at the given location, in hex):
 
-![caf3b33b](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/cafebeeb.png)
+![caf3b33b](cafebeeb.png)
 
-![encflag](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/encflag.png)
+![encflag](encflag.png)
 
 (the string I entered was `aaaaa...` (74 a's))
 
@@ -172,7 +172,7 @@ The first string I used was:
 
 Which gave out:
 
-![abc...qrs](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/step1.png)
+![abc...qrs](step1.png)
 
 From this, we see that:
 ```
@@ -204,7 +204,7 @@ We're making progress! Let's restart the program, and this time we enter as inpu
 
 Which gives:
 
-![abc...qrs](https://github.com/MegaAbsol/CSAW-HSF-Prelim-Writeups-2016/raw/master/Isengard-500/stletters.png)
+![abc...qrs](stletters.png)
 
 So now our flag is:
 ```
